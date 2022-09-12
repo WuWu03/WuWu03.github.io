@@ -1,34 +1,638 @@
-<!DOCTYPE html><html lang="zh-CN" id="theme-light-mode"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="author" content="鳴"><title>游戏开发中的树形结构——红点系统 · 鳴</title><meta name="description" content="游戏开发中用到树形结构的业务并不是很多，最常见的功能就是红点系统和行为树。我今天先写一下红点系统的开发。
-红点系统的作用就是给玩家提示，例如：玩家有未读邮则主界面邮件功能出现红点，玩家看到红点后点击邮件功能入口，进入邮件功能主界面后又看到邮件标签页显示红点，于是又点击邮件标签进入邮件列表，在众多邮件"><meta name="keywords" content="Blog,博客,Hexo"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="renderer" content="webkit"><link rel="shortcut icon" type="image/x-icon" href="/images/1_fade.png"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/blog_basic.css"><link rel="stylesheet" href="/css/font-awesome.min.css"><link rel="stylesheet" href="/css/insight.css"><link rel="stylesheet" href="/css/search.css"><link rel="alternate" type="application/atom+xml" title="ATOM 1.0" href="/atom.xml"><script src="/js/jquery.js"></script><meta name="generator" content="Hexo 5.4.2"></head><body><div class="page-top animated fadeInDown"><div class="nav"><li> <a href="/">首页</a></li><li> <a href="/archives">归档</a></li><li> <a href="/tags">标签</a></li><li> <a href="/about">关于</a></li></div><div class="information"><div class="nav_right_btn"><li><a class="fa fa-chevron-left" onclick="window.history.go(-1)"> </a></li><li><a class="fa fa-search" onclick="openWindow();"></a></li></div><div class="avatar"><img src="/images/1.png"></div></div></div><div class="sidebar animated fadeInDown"><div class="sidebar-top"><div class="logo-title"><div class="title"><img src="/images/1.png" style="width:220px;" alt="favicon"><h3 title=""><a href="/">鳴</a></h3><div class="description"><p>不以物喜，不以己悲</p></div></div><ul class="social-links"><li><a target="_blank" rel="noopener" href="https://github.com/Ming-e"><i class="fa fa-github"></i></a></li><li><a href="mailto:424215969@qq.com"><i class="fa fa-envelope"></i></a></li><li><a target="_blank" rel="noopener" href="http://sighttp.qq.com/authd?IDKEY=424215969"><i class="fa fa-qq"></i></a></li><li><a target="_blank" rel="noopener" href="https://www.zhihu.com/people/gqy-22"><i class="fa fa-mortar-board"></i></a></li></ul></div></div><div class="footer"><div class="p"> <span> 全站CC-BY-SA-3.0 </span><i class="fa fa-star"></i><span> 鳴</span></div><div class="by_farbox"><span>Powered by </span><a href="https://hexo.io/zh-cn/" target="_blank">Hexo </a><span> & </span><span>Anatolo </span></div><div class="beian"></div></div></div><div class="main"><div class="autopagerize_page_element"><div class="content"><div class="post-page"><div class="post animated fadeInDown"><div class="post-title"><h3><a>游戏开发中的树形结构——红点系统</a></h3></div><div class="post-content"><p><p>游戏开发中用到树形结构的业务并不是很多，最常见的功能就是红点系统和行为树。我今天先写一下红点系统的开发。</p>
-<p>红点系统的作用就是给玩家提示，例如：玩家有未读邮则主界面邮件功能出现红点，玩家看到红点后点击邮件功能入口，进入邮件功能主界面后又看到邮件标签页显示红点，于是又点击邮件标签进入邮件列表，在众多邮件中找到某一封显示红点的未读邮件。</p>
-<p>整个提示流程是：主界面邮件入口→邮件界面邮件页签→邮件列表中的未读邮件，直观的看，它就是从外到内一层一层的进行提示。</p>
-<p>然而在实现红点功能的时候，认真地想一下，真的是从外到内逐层提示吗？需要在主界面，邮件界面，邮件列表界面分别写提示代码吗？</p>
-<p>在每天都有大量业务等着我去开发的日子，一个小小的红点居然要我逐个手写提示，如果组里真的允许如上文说的那样做，不管别人如何反正我要骂街了。（别说，我现在的公司还真有人这么搞，而且是几年前就开始这么做，可想而知他弄的那些功能要涉及多少代码，真就到处都写一句）</p>
-<p>所以优雅代码的诞生就是从偷懒开始，我希望我只要在邮件列表刷新时加上一句代码:RedPointMgr.ShowPoint(RedPointType.Mail,true)就完成上面整个提示流程。</p>
-<p>于是红点树应运而生，与前面说的从外到内逐层提示不同，这一句代码是写在邮件列表中也就是最内层的，当我调用ShowPoint的时候就会从当前节点逐层向前遍历，即：触发红点功能所有的父节点全部进行一次红点提示即可。</p>
-<p>PS：为什么不是从根节点向子节点遍历？显然，每个节点有众多子节点，无法得知当前节点在哪个节点下，只能先遍历一次找到当前节点，再从当前节点反向遍历。</p>
-<p>那么到这里就很清晰了，首先要有一个红点类，它是一个树形结构</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br></pre></td><td class="code"><pre><span class="line">public enum RedPointType</span><br><span class="line">&#123;</span><br><span class="line">    None,</span><br><span class="line">    Enternal,//一直存在</span><br><span class="line">    Once,//点击一次就消失</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public enum RedPointState</span><br><span class="line">&#123;</span><br><span class="line">    None,</span><br><span class="line">    Show,</span><br><span class="line">    Hide,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class RedPoint</span><br><span class="line">&#123;</span><br><span class="line">    public string key</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Key;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public string subKey</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_SubKey;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public bool isRoot</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_IsRoot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPointType type</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Type;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPointState state</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_State;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public int data</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Data;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPoint parent</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Parent;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public List&lt;RedPoint&gt; children</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Children;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    public RedPoint(string key, string subKey, bool isRoot, RedPointType type)</span><br><span class="line">    &#123;</span><br><span class="line">        m_Key = key;</span><br><span class="line">        m_SubKey = subKey;</span><br><span class="line">        m_IsRoot = isRoot;</span><br><span class="line">        m_Type = type;</span><br><span class="line">        m_State = RedPointState.Hide;</span><br><span class="line">        m_Data = 0;</span><br><span class="line">        m_Children = new List&lt;RedPoint&gt;();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void Init(Action&lt;RedPointState, int&gt; onShow, Button btn)</span><br><span class="line">    &#123;</span><br><span class="line">        m_OnShow = onShow;</span><br><span class="line"></span><br><span class="line">        if (btn != null)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Btn = btn;</span><br><span class="line">            m_Btn.onClick.AddListener(OnClick);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_OnShow?.Invoke(m_State, m_Data);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void AddChild(RedPoint node, string parentKey)</span><br><span class="line">    &#123;</span><br><span class="line">        if (m_SubKey.Equals(parentKey))</span><br><span class="line">        &#123;</span><br><span class="line">            node.SetParent(this);</span><br><span class="line">            m_Children.Add(node);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Children[i].AddChild(node, parentKey);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPoint GetChild(string subKey)</span><br><span class="line">    &#123;</span><br><span class="line">        if (m_SubKey.Equals(subKey))</span><br><span class="line">        &#123;</span><br><span class="line">            return this;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        if (m_Children.Count &lt; 1)</span><br><span class="line">        &#123;</span><br><span class="line">            return null;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            RedPoint node = m_Children[i].GetChild(subKey);</span><br><span class="line">            if (node != null) return node;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return null;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void SetParent(RedPoint parent)</span><br><span class="line">    &#123;</span><br><span class="line">        m_Parent = parent;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void SetTreeState(string subKey, RedPointState state, int data)</span><br><span class="line">    &#123;</span><br><span class="line">        RedPoint node = GetChild(subKey);</span><br><span class="line">        if (node == null)</span><br><span class="line">        &#123;</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_Data = 0;</span><br><span class="line">        node.SetState(subKey, state, data);</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Data += m_Children[i].data;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_OnShow?.Invoke(m_State, m_Data);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void SetState(string subKey, RedPointState state, int data)</span><br><span class="line">    &#123;</span><br><span class="line">        m_State = state;</span><br><span class="line"></span><br><span class="line">        if (m_SubKey.Equals(subKey))</span><br><span class="line">        &#123;</span><br><span class="line">            m_Data = data;</span><br><span class="line">        &#125;</span><br><span class="line">        else</span><br><span class="line">        &#123;</span><br><span class="line">            for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">            &#123;</span><br><span class="line">                if (m_Children[i].state == RedPointState.Show)</span><br><span class="line">                &#123;</span><br><span class="line">                    m_State = RedPointState.Show;</span><br><span class="line">                    break;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_OnShow?.Invoke(m_State, m_Data);</span><br><span class="line"></span><br><span class="line">        if (m_Parent != null)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Parent.SetState(subKey, state, data);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void OnClick()</span><br><span class="line">    &#123;</span><br><span class="line">        if (m_Type == RedPointType.Once)</span><br><span class="line">        &#123;</span><br><span class="line">            HideChildren();</span><br><span class="line">            SetState(m_SubKey, RedPointState.Hide, m_Data);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void HideChildren()</span><br><span class="line">    &#123;</span><br><span class="line">        m_State = RedPointState.Hide;</span><br><span class="line">        m_OnShow?.Invoke(m_State, m_Data);</span><br><span class="line">        for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Children[i].HideChildren();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void Dispose()</span><br><span class="line">    &#123;</span><br><span class="line">        m_Children.Clear();</span><br><span class="line">        m_Children = null;</span><br><span class="line">        m_Parent = null;</span><br><span class="line">        m_Key = null;</span><br><span class="line">        m_SubKey = null;</span><br><span class="line">        m_OnShow = null;</span><br><span class="line">        m_Btn = null;</span><br><span class="line">        m_Type = RedPointType.None;</span><br><span class="line">        m_State = RedPointState.None;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private string m_Key = string.Empty;</span><br><span class="line">    private string m_SubKey = string.Empty;</span><br><span class="line">    private bool m_IsRoot = false;</span><br><span class="line">    private RedPointType m_Type = RedPointType.None;</span><br><span class="line">    private RedPointState m_State = RedPointState.None;</span><br><span class="line">    private GameFrameWorkAction&lt;RedPointState, int&gt; m_OnShow = null;</span><br><span class="line">    private Button m_Btn;</span><br><span class="line">    private int m_Data = 0;</span><br><span class="line">    private RedPoint m_Parent = null;</span><br><span class="line">    private List&lt;RedPoint&gt; m_Children = null;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这里面key就是归属，也就是属于哪一个大功能，subKey是自己的关键字。</p>
-<p>然后需要一个管理器来管理游戏中所有红点的根节点，需要的时候通过关键字找到红点的根节点，再向其中的某个节点插入孩子节点。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br></pre></td><td class="code"><pre><span class="line">public class RedPointMgr : BaseMgr&lt;RedPointMgr&gt;</span><br><span class="line">&#123;</span><br><span class="line">    protected override void OnAwake()</span><br><span class="line">    &#123;</span><br><span class="line">        m_ListRedPointTrees = new List&lt;RedPoint&gt;();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void Regist(string key, string subKey, string parentKey, RedPointType type)</span><br><span class="line">    &#123;</span><br><span class="line">        RedPoint root = GetRedPointTree(key);</span><br><span class="line"></span><br><span class="line">        if (string.IsNullOrEmpty(subKey) &amp;&amp; string.IsNullOrEmpty(parentKey))</span><br><span class="line">        &#123;</span><br><span class="line">            if (root == null)</span><br><span class="line">            &#123;</span><br><span class="line">                root = new RedPoint(key, key, true, type);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            m_ListRedPointTrees.Add(root);</span><br><span class="line">        &#125;</span><br><span class="line">        else</span><br><span class="line">        &#123;</span><br><span class="line">            if (root == null)</span><br><span class="line">            &#123;</span><br><span class="line">                Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);</span><br><span class="line">                return;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            RedPoint node = new RedPoint(key, subKey, false, type);</span><br><span class="line">            root.AddChild(node, parentKey);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void InitPoint(string key, string subKey, GameFrameWorkAction&lt;RedPointState, int&gt; onShow, Button btn = null)</span><br><span class="line">    &#123;</span><br><span class="line">        RedPoint root = GetRedPointTree(key);</span><br><span class="line"></span><br><span class="line">        if (root == null)</span><br><span class="line">        &#123;</span><br><span class="line">            Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        RedPoint node = root.GetChild(subKey);</span><br><span class="line"></span><br><span class="line">        if (node == null)</span><br><span class="line">        &#123;</span><br><span class="line">            Log.GameFrameworkLog.LogError(&quot;The red point node [&quot; + subKey + &quot;] is invalid,please regist first&quot;);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        node.Init(onShow, btn);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void SetPointState(string key, string subKey, RedPointState state, int data = 0)</span><br><span class="line">    &#123;</span><br><span class="line">        RedPoint root = GetRedPointTree(key);</span><br><span class="line"></span><br><span class="line">        if (root == null)</span><br><span class="line">        &#123;</span><br><span class="line">            Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        root.SetTreeState(subKey, state, data);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void Remove(string key)</span><br><span class="line">    &#123;</span><br><span class="line">        for (int i = m_ListRedPointTrees.Count - 1; i &gt;= 0; i--)</span><br><span class="line">        &#123;</span><br><span class="line">            if (m_ListRedPointTrees[i].key.Equals(key))</span><br><span class="line">            &#123;</span><br><span class="line">                m_ListRedPointTrees[i].Dispose();</span><br><span class="line">                m_ListRedPointTrees.RemoveAt(i);</span><br><span class="line">                return;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPoint GetRedPointTree(string key)</span><br><span class="line">    &#123;</span><br><span class="line">        if (string.IsNullOrEmpty(key))</span><br><span class="line">        &#123;</span><br><span class="line">            return null;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; m_ListRedPointTrees.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            if (m_ListRedPointTrees[i].key.Equals(key))</span><br><span class="line">            &#123;</span><br><span class="line">                return m_ListRedPointTrees[i];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return null;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    protected override void OnShutDown()</span><br><span class="line">    &#123;</span><br><span class="line">        for (int i = m_ListRedPointTrees.Count - 1; i &gt;= 0; i--)</span><br><span class="line">        &#123;</span><br><span class="line">            m_ListRedPointTrees[i].Dispose();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_ListRedPointTrees.Clear();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private List&lt;RedPoint&gt; m_ListRedPointTrees = null;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>使用时，先在游戏初始化的时候声明有哪些红点构建红点树，然后在UI界面初始化时加入红点显示和点击的回调，最后在功能逻辑处调用SetPointState方法。</p>
-<p>例如现在有一个mail功能，里面有mail2,mail3,mail4三层需要提示红点，只要mail4才是具体业务管理的，其他三个都是页签按钮等。</p>
-<p>先构建，再初始化一顿操作。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">public class Test : MonoBehaviour</span><br><span class="line">&#123;</span><br><span class="line">    public Button button;</span><br><span class="line">    public Text text;</span><br><span class="line">    public Image image;</span><br><span class="line"></span><br><span class="line">    private void Awake()</span><br><span class="line">    &#123;</span><br><span class="line">        RedPointMgr.Init(gameObject);</span><br><span class="line">        string mail = &quot;mail1&quot;;</span><br><span class="line">        string mail2 = &quot;mail2&quot;;</span><br><span class="line">        string mail3 = &quot;mail3&quot;;</span><br><span class="line">        string mail4 = &quot;mail4&quot;;</span><br><span class="line"></span><br><span class="line">        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化</span><br><span class="line">        RedPointMgr.instance.Regist(mail, null, null, RedPointType.Enternal);</span><br><span class="line">        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化</span><br><span class="line">        RedPointMgr.instance.Regist(mail, mail2, mail, RedPointType.Enternal);</span><br><span class="line">        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化</span><br><span class="line">        RedPointMgr.instance.Regist(mail, mail3, mail2, RedPointType.Enternal);</span><br><span class="line">        //声明mail根节点，它的主key是mail，无父节点，红点类型是点击即消失</span><br><span class="line">        RedPointMgr.instance.Regist(mail, mail4, mail3, RedPointType.Once);</span><br><span class="line"></span><br><span class="line">        RedPointMgr.instance.InitPoint(mail, mail, null);</span><br><span class="line">        RedPointMgr.instance.InitPoint(mail, mail2, null);</span><br><span class="line">        RedPointMgr.instance.InitPoint(mail, mail3, null);</span><br><span class="line">        RedPointMgr.instance.InitPoint(mail, mail4, this.onShow, button);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void onShow(RedPointState state, int data)</span><br><span class="line">    &#123;</span><br><span class="line">        image.gameObject.SetActive(state == RedPointState.Show);</span><br><span class="line">        text.text = data.ToString();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>然后在业务处调用一句</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RedPointMgr.instance.SetPointState(mail, mail4, RedPointState.Show, 5);</span><br></pre></td></tr></table></figure>
-<p>这里这个5是显示再红点上的数量，也是业务需要统计的数据，当然如果只显示红点不显示数量就不用传了。</p>
+<!DOCTYPE html>
+<html lang="zh-cn">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
+        <title>游戏开发中的树形结构——红点系统 | Ming-E</title>
+        <meta name="author" content="Ming-e">
+        <meta name="description" content="">
+        <meta name="keywords" content="Ming-e">
+        <link rel="icon" href="/images/1.png">
+        <script src="https://cdn.staticfile.org/instant.page/5.1.0/instantpage.min.js" type="module"></script>
+        <script src="https://cdn.staticfile.org/font-awesome/6.1.1/js/all.min.js"></script>
+        
+        <link rel="stylesheet" href="/css/fonts.min.css">
+        <link rel="stylesheet" href="/css/particlex.css">
+        
+        <script src="https://cdn.staticfile.org/vue/3.2.33/vue.global.prod.min.js"></script>
+    <meta name="generator" content="Hexo 5.4.2"></head>
+    <body>
+        <div id="loading" style="height:100vh;width:100vw;position:fixed;display:flex;z-index:200;justify-content:space-between;background:#fff;transition:opacity 0.3s ease-out"><div style="position:fixed;height:100vh;width:100vw;display:flex;justify-content:center;align-items:center"><div id="loadcontent" style="width:50vmin;height:50vmin;padding:50px;border-radius:50%;display:flex;justify-content:center;align-items:center;border:solid 10px #a3ddfb;text-align:center"><div><h2>LOADING...</h2><p style="word-break:keep-all">加载过慢请开启缓存(浏览器默认开启)</p><div><img alt="loading" src="/loading.gif"></div></div></div></div></div>
+        <div id="layout">
+            <i data-fa-symbol="calendar-solid" class="fa-solid fa-calendar fa-fw"></i>
+            <i data-fa-symbol="bookmark-solid" class="fa-solid fa-bookmark fa-fw"></i>
+            <i data-fa-symbol="tags-solid" class="fa-solid fa-tags fa-fw"></i>
+            <transition name="into">
+                <div v-show="show_page" style="display: -not-none">
+                    <div id="menu_show">
+                         
+<nav id="menu">
+    <div class="desktop-menu">
+        <a href="/">
+            <span class="title">Ming-e</span>
+        </a>
+        
+        <a href="/">
+            <i class="fa-solid fa-house fa-fw"></i>
+            <span>&ensp;home</span>
+        </a>
+        
+        <a href="/about">
+            <i class="fa-solid fa-id-card fa-fw"></i>
+            <span>&ensp;about</span>
+        </a>
+        
+        <a href="/archives">
+            <i class="fa-solid fa-box-archive fa-fw"></i>
+            <span>&ensp;archives</span>
+        </a>
+        
+        <a href="/categories">
+            <i class="fa-solid fa-bookmark fa-fw"></i>
+            <span>&ensp;categories</span>
+        </a>
+        
+        <a href="/tags">
+            <i class="fa-solid fa-tags fa-fw"></i>
+            <span>&ensp;tags</span>
+        </a>
+        
+    </div>
+    <div :class="'phone-menu ' + menu_show" id="phone-menu">
+        <div class="curtain" @click="menu_show = !menu_show" v-show="menu_show"></div>
+        <div :class="'title'" @click="menu_show = !menu_show">
+            <i class="fa-solid fa-bars fa-fw"></i>
+            <span>&emsp;Ming-e</span>
+        </div>
+        <transition name="slide">
+        <div class="items" v-show="menu_show">
+            
+            <a href="/">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-house fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">home</div>
+                </div>
+            </a>
+            
+            <a href="/about">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-id-card fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">about</div>
+                </div>
+            </a>
+            
+            <a href="/archives">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-box-archive fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">archives</div>
+                </div>
+            </a>
+            
+            <a href="/categories">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-bookmark fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">categories</div>
+                </div>
+            </a>
+            
+            <a href="/tags">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-tags fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">tags</div>
+                </div>
+            </a>
+            
+        </div>
+        </transition>
+    </div>
+</nav>
+                    </div>
+                    <div id="main">
+                        
+<div class="article">
+    <div>
+        <h1>游戏开发中的树形结构——红点系统 </h1>
+    </div>
+    <div class="info">
+        <span class="date">
+            <span class="icon">
+                <svg class="fa-icon"><use xlink:href="#calendar-solid"></use></svg>
+            </span>
+            2022/9/12
+        </span>
+        
+        <span class="category">
+            <a href="/categories/技术/">
+                <span class="icon">
+                    <svg class="fa-icon"><use xlink:href="#bookmark-solid"></use></svg>
+                </span>
+                技术
+            </a>
+        </span>
+        
+        
+        <span class="tags">
+            <span class="icon">
+                <svg class="fa-icon"><use xlink:href="#tags-solid"></use></svg>
+            </span>
+            
+            <span class="tag">
+                
+                <a href="/tags/技术/" style="color: #00a596">
+                    技术
+                </a>
+            </span>
+            
+        </span>
+        
+    </div>
+    <div class="content" v-pre>
+        <p>游戏开发中最常见的用到树形结构的功能就是红点系统和行为树。</p>
+<p>我今天先写一下红点系统的开发。</p>
+<span id="more"></span>
+
+<p>红点系统的作用就是给玩家提示，例如：玩家有未读邮则主界面邮件功能出现红点，玩家看到红点后点击邮件功能入口，进入邮件功能主界面后又看到邮件标签页显示红点，于是又点击邮件标签进入邮件列表，在众多邮件中找到某一封显示红点的未读邮件。</p>
+<p>整个提示流程是：主界面邮件入口→邮件界面邮件页签→邮件列表中的未读邮件。</p>
+<p>直观的看，它就是从外到内逐层进行提示。</p>
+<p>然而在实现红点功能的时候，认真地想一下，真的是从外到内逐层提示吗？</p>
+<p>需要在主界面，邮件界面，邮件列表界面分别写红点提示代码吗？</p>
+<p>每天都有做不完的业务，一个小小的红点居然要我逐个手写提示，我要骂街了。</p>
+<p>别说，我还真见过有人这么搞，一个功能的红点提示要到处写，可想而知他弄的那些功能要涉及多少代码，。</p>
+<p>所以优雅代码的诞生就是从偷懒开始，我希望只要在邮件列表刷新时加上一句代码:RedPointMgr.ShowPoint(RedPointType.Mail,true)就完成上面整个提示流程。</p>
+<p>于是红点树应运而生，与前面说的从外到内逐层提示不同，这一句代码是在邮件列表刷新时触发的，只在自己的业务里写一句即可。</p>
+<p>当调用ShowPoint的时候就会从当前节点逐层向前遍历，即：触发红点功能的节点的所有父节点全部进行一次红点提示即可。</p>
+<blockquote>
+<p>PS：为什么不是从根节点向子节点遍历？显然，每个节点只有一个父节点，有众多子节点，无法得知当前节点在哪个节点下，只能先遍历一次找到当前节点，再从当前节点反向遍历。</p>
+</blockquote>
+<p>那么到这里就很清晰了，首先要有一个红点类，它是一个树形结构</p>
+<pre><code>public enum RedPointType
+&#123;
+    None,
+    Enternal,//一直存在
+    Once,//点击一次就消失
+&#125;
+
+public enum RedPointState
+&#123;
+    None,
+    Show,
+    Hide,
+&#125;
+
+public class RedPoint
+&#123;
+    public string key
+    &#123;
+        get
+        &#123;
+            return m_Key;
+        &#125;
+    &#125;
+
+    public string subKey
+    &#123;
+        get
+        &#123;
+            return m_SubKey;
+        &#125;
+    &#125;
+
+    public bool isRoot
+    &#123;
+        get
+        &#123;
+            return m_IsRoot;
+        &#125;
+    &#125;
+
+    public RedPointType type
+    &#123;
+        get
+        &#123;
+            return m_Type;
+        &#125;
+    &#125;
+
+    public RedPointState state
+    &#123;
+        get
+        &#123;
+            return m_State;
+        &#125;
+    &#125;
+
+    public int data
+    &#123;
+        get
+        &#123;
+            return m_Data;
+        &#125;
+    &#125;
+
+    public RedPoint parent
+    &#123;
+        get
+        &#123;
+            return m_Parent;
+        &#125;
+    &#125;
+
+    public List&lt;RedPoint&gt; children
+    &#123;
+        get
+        &#123;
+            return m_Children;
+        &#125;
+    &#125;
+
+
+    public RedPoint(string key, string subKey, bool isRoot, RedPointType type)
+    &#123;
+        m_Key = key;
+        m_SubKey = subKey;
+        m_IsRoot = isRoot;
+        m_Type = type;
+        m_State = RedPointState.Hide;
+        m_Data = 0;
+        m_Children = new List&lt;RedPoint&gt;();
+    &#125;
+
+    public void Init(Action&lt;RedPointState, int&gt; onShow, Button btn)
+    &#123;
+        m_OnShow = onShow;
+
+        if (btn != null)
+        &#123;
+            m_Btn = btn;
+            m_Btn.onClick.AddListener(OnClick);
+        &#125;
+
+        m_OnShow?.Invoke(m_State, m_Data);
+    &#125;
+
+    public void AddChild(RedPoint node, string parentKey)
+    &#123;
+        if (m_SubKey.Equals(parentKey))
+        &#123;
+            node.SetParent(this);
+            m_Children.Add(node);
+            return;
+        &#125;
+
+        for (int i = 0; i &lt; m_Children.Count; i++)
+        &#123;
+            m_Children[i].AddChild(node, parentKey);
+        &#125;
+    &#125;
+
+    public RedPoint GetChild(string subKey)
+    &#123;
+        if (m_SubKey.Equals(subKey))
+        &#123;
+            return this;
+        &#125;
+
+        if (m_Children.Count &lt; 1)
+        &#123;
+            return null;
+        &#125;
+
+        for (int i = 0; i &lt; m_Children.Count; i++)
+        &#123;
+            RedPoint node = m_Children[i].GetChild(subKey);
+            if (node != null) return node;
+        &#125;
+
+        return null;
+    &#125;
+
+    public void SetParent(RedPoint parent)
+    &#123;
+        m_Parent = parent;
+    &#125;
+
+    public void SetTreeState(string subKey, RedPointState state, int data)
+    &#123;
+        RedPoint node = GetChild(subKey);
+        if (node == null)
+        &#123;
+            return;
+        &#125;
+
+        m_Data = 0;
+        node.SetState(subKey, state, data);
+
+        for (int i = 0; i &lt; m_Children.Count; i++)
+        &#123;
+            m_Data += m_Children[i].data;
+        &#125;
+
+        m_OnShow?.Invoke(m_State, m_Data);
+    &#125;
+
+    private void SetState(string subKey, RedPointState state, int data)
+    &#123;
+        m_State = state;
+
+        if (m_SubKey.Equals(subKey))
+        &#123;
+            m_Data = data;
+        &#125;
+        else
+        &#123;
+            for (int i = 0; i &lt; m_Children.Count; i++)
+            &#123;
+                if (m_Children[i].state == RedPointState.Show)
+                &#123;
+                    m_State = RedPointState.Show;
+                    break;
+                &#125;
+            &#125;
+        &#125;
+
+        m_OnShow?.Invoke(m_State, m_Data);
+
+        if (m_Parent != null)
+        &#123;
+            m_Parent.SetState(subKey, state, data);
+        &#125;
+    &#125;
+
+    private void OnClick()
+    &#123;
+        if (m_Type == RedPointType.Once)
+        &#123;
+            HideChildren();
+            SetState(m_SubKey, RedPointState.Hide, m_Data);
+        &#125;
+    &#125;
+
+    private void HideChildren()
+    &#123;
+        m_State = RedPointState.Hide;
+        m_OnShow?.Invoke(m_State, m_Data);
+        for (int i = 0; i &lt; m_Children.Count; i++)
+        &#123;
+            m_Children[i].HideChildren();
+        &#125;
+    &#125;
+
+    public void Dispose()
+    &#123;
+        m_Children.Clear();
+        m_Children = null;
+        m_Parent = null;
+        m_Key = null;
+        m_SubKey = null;
+        m_OnShow = null;
+        m_Btn = null;
+        m_Type = RedPointType.None;
+        m_State = RedPointState.None;
+    &#125;
+
+    private string m_Key = string.Empty;
+    private string m_SubKey = string.Empty;
+    private bool m_IsRoot = false;
+    private RedPointType m_Type = RedPointType.None;
+    private RedPointState m_State = RedPointState.None;
+    private GameFrameWorkAction&lt;RedPointState, int&gt; m_OnShow = null;
+    private Button m_Btn;
+    private int m_Data = 0;
+    private RedPoint m_Parent = null;
+    private List&lt;RedPoint&gt; m_Children = null;
+&#125;
+</code></pre>
+<p>这里面key就是归属，也就是属于哪一个大功能，subKey是自己的关键字。</p>
+<hr>
+<p>然后需要一个管理器来管理游戏中所有红点的根节点，需要的时候通过关键字找到红点的根节点，再向其中的某个节点插入子节点。</p>
+<pre><code>public class RedPointMgr : BaseMgr&lt;RedPointMgr&gt;
+&#123;
+    protected override void OnAwake()
+    &#123;
+        m_ListRedPointTrees = new List&lt;RedPoint&gt;();
+    &#125;
+
+    public void Regist(string key, string subKey, string parentKey, RedPointType type)
+    &#123;
+        RedPoint root = GetRedPointTree(key);
+
+        if (string.IsNullOrEmpty(subKey) &amp;&amp; string.IsNullOrEmpty(parentKey))
+        &#123;
+            if (root == null)
+            &#123;
+                root = new RedPoint(key, key, true, type);
+            &#125;
+
+            m_ListRedPointTrees.Add(root);
+        &#125;
+        else
+        &#123;
+            if (root == null)
+            &#123;
+                Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);
+                return;
+            &#125;
+
+            RedPoint node = new RedPoint(key, subKey, false, type);
+            root.AddChild(node, parentKey);
+        &#125;
+    &#125;
+
+    public void InitPoint(string key, string subKey, GameFrameWorkAction&lt;RedPointState, int&gt; onShow, Button btn = null)
+    &#123;
+        RedPoint root = GetRedPointTree(key);
+
+        if (root == null)
+        &#123;
+            Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);
+            return;
+        &#125;
+
+        RedPoint node = root.GetChild(subKey);
+
+        if (node == null)
+        &#123;
+            Log.GameFrameworkLog.LogError(&quot;The red point node [&quot; + subKey + &quot;] is invalid,please regist first&quot;);
+            return;
+        &#125;
+
+        node.Init(onShow, btn);
+    &#125;
+
+    public void SetPointState(string key, string subKey, RedPointState state, int data = 0)
+    &#123;
+        RedPoint root = GetRedPointTree(key);
+
+        if (root == null)
+        &#123;
+            Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);
+            return;
+        &#125;
+
+        root.SetTreeState(subKey, state, data);
+    &#125;
+
+    public void Remove(string key)
+    &#123;
+        for (int i = m_ListRedPointTrees.Count - 1; i &gt;= 0; i--)
+        &#123;
+            if (m_ListRedPointTrees[i].key.Equals(key))
+            &#123;
+                m_ListRedPointTrees[i].Dispose();
+                m_ListRedPointTrees.RemoveAt(i);
+                return;
+            &#125;
+        &#125;
+    &#125;
+
+    public RedPoint GetRedPointTree(string key)
+    &#123;
+        if (string.IsNullOrEmpty(key))
+        &#123;
+            return null;
+        &#125;
+
+        for (int i = 0; i &lt; m_ListRedPointTrees.Count; i++)
+        &#123;
+            if (m_ListRedPointTrees[i].key.Equals(key))
+            &#123;
+                return m_ListRedPointTrees[i];
+            &#125;
+        &#125;
+
+        return null;
+    &#125;
+
+    protected override void OnShutDown()
+    &#123;
+        for (int i = m_ListRedPointTrees.Count - 1; i &gt;= 0; i--)
+        &#123;
+            m_ListRedPointTrees[i].Dispose();
+        &#125;
+
+        m_ListRedPointTrees.Clear();
+    &#125;
+
+    private List&lt;RedPoint&gt; m_ListRedPointTrees = null;
+&#125;
+</code></pre>
+<p>使用时，先在游戏初始化的时候声明有哪些红点，来构建一颗红点树；然后在UI界面初始化时加入红点显示和点击的回调；最后在功能逻辑处调用SetPointState方法。</p>
+<hr>
+<p>例如：现在有一个mail功能，里面有mail2、mail3、mail4，一共四层需要红点提示，只有mail4才是具体业务管理的，其他三个都随着mail4变化。</p>
+<p>先构建，再初始化，最后写显示回调。（一顿操作猛如虎，一看工资2k5）</p>
+<pre><code>public class Test : MonoBehaviour
+&#123;
+    public Button button;
+    public Text text;
+    public Image image;
+
+    private void Awake()
+    &#123;
+        RedPointMgr.Init(gameObject);
+        string mail = &quot;mail1&quot;;
+        string mail2 = &quot;mail2&quot;;
+        string mail3 = &quot;mail3&quot;;
+        string mail4 = &quot;mail4&quot;;
+        
+        //在实际开发中整个游戏的红点树要在游戏初始化的时候就全部构建出来
+        
+        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化
+        RedPointMgr.instance.Regist(mail, null, null, RedPointType.Enternal);
+        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化
+        RedPointMgr.instance.Regist(mail, mail2, mail, RedPointType.Enternal);
+        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化
+        RedPointMgr.instance.Regist(mail, mail3, mail2, RedPointType.Enternal);
+        //声明mail根节点，它的主key是mail，无父节点，红点类型是点击即消失
+        RedPointMgr.instance.Regist(mail, mail4, mail3, RedPointType.Once);
+
+        //这里在实际开发中要写在对应的UI界面的初始化函数中
+        RedPointMgr.instance.InitPoint(mail, mail, null);
+        RedPointMgr.instance.InitPoint(mail, mail2, null);
+        RedPointMgr.instance.InitPoint(mail, mail3, null);
+        RedPointMgr.instance.InitPoint(mail, mail4, this.onShow, button);
+    &#125;
+
+    private void onShow(RedPointState state, int data)
+    &#123;
+        image.gameObject.SetActive(state == RedPointState.Show);
+        text.text = data.ToString();
+    &#125;
+&#125;
+</code></pre>
+<p>最后在业务处调用一句</p>
+<pre><code>RedPointMgr.instance.SetPointState(mail, mail4, RedPointState.Show, 5);
+</code></pre>
+<blockquote>
+<p>这里的5是显示在红点上的数字，是业务需要统计的数据，如果只显示红点不显示数字就不用传了。</p>
+</blockquote>
 <p>以上是红点系统的简单实现，写这篇东西也是因为见到公司的大神同事竟然手写每一个红点，这实在是令我惊叹不已。</p>
-<p>当然，最重要的还是我可不想写那么多的cv代码。</p>
-</p><div class="tip">本文采用CC-BY-SA-3.0协议，转载请注明出处<br>作者: 鳴</div></div><div class="post-footer"><div class="meta"><div class="info"><i class="fa fa-sun-o"></i><span class="date">2022-09-12</span><a class="tag" href="/categories/技术/" title="技术">技术 </a><i class="fa fa-tag"></i><a class="tag" href="/tags/技术/" title="技术">技术 </a><span class="leancloud_visitors"></span><span>大约2021个字, 6分钟44秒读完</span></div></div></div></div><div class="share"><div class="evernote"><a class="fa fa-bookmark" href="" onclick="javascript:join_favorite()" ref="sidebar"></a></div><div class="weibo"><a class="fa fa-weibo" href="javascript:void((function(s,d,e){try{}catch(e){}var f='http://service.weibo.com/share/share.php?',u=d.location.href,p=['url=',e(u),'&amp;title=',e(d.title),'&amp;appkey=2924220432'].join('');function a(){if(!window.open([f,p].join(''),'mb',['toolbar=0,status=0,resizable=1,width=620,height=450,left=',(s.width-620)/2,',top=',(s.height-450)/2].join('')))u.href=[f,p].join('');};if(/Firefox/.test(navigator.userAgent)){setTimeout(a,0)}else{a()}})(screen,document,encodeURIComponent));"></a></div><div class="twitter"><a class="fa fa-twitter" target="_blank" rel="noopener" href="http://twitter.com/intent/tweet?text=%E5%88%86%E4%BA%AB%E6%96%87%E7%AB%A0%EF%BC%9A%0A%0A%E9%B3%B4%20%C2%B7%20%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91%E4%B8%AD%E7%9A%84%E6%A0%91%E5%BD%A2%E7%BB%93%E6%9E%84%E2%80%94%E2%80%94%E7%BA%A2%E7%82%B9%E7%B3%BB%E7%BB%9F%0Ahttp://example.com/2022/09/12/tree%20struct%20in%20game%20develop_1/%0A"></a></div></div><div class="pagination"><ul class="clearfix"><li class="next pagbuttons"><a class="btn" role="navigation" href="/2022/09/09/hello-world/" title="Hello World">下一篇</a></li></ul></div><script src="/js/visitors.js"></script><a id="comments"></a><div id="gitalk_container" style="padding:10px"></div><link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css"><script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script><script>const gitalk = new Gitalk({
-    clientID: '9af268294e0ae5907374',
-    clientSecret: '04011d6f9bf34d86b7547917330669eb92b9a7d3',
-    repo: 'Ming-e.github.io',      // The repository of store comments,
-    owner: 'Ming-e',
-    admin: ['Ming-e'],
-    id: '游戏开发中的树形结构——红点系统',      // Ensure uniqueness and length less than 50
-    distractionFreeMode: false  // Facebook-like distraction free mode
-})
-gitalk.render('gitalk_container')</script></div></div></div></div><script src="/js/darkLightToggle.js"></script><script src="/js/jquery-migrate-1.2.1.min.js"></script><script src="/js/jquery.appear.js"></script><script src="/js/add-bookmark.js"></script><script>(function(window){var INSIGHT_CONFIG={TRANSLATION:{POSTS:"文章",PAGES:"页面",CATEGORIES:"分类",TAGS:"标签",UNTITLED:"(无标题)",},CONTENT_URL:"/content.json",};window.INSIGHT_CONFIG=INSIGHT_CONFIG})(window);</script><script src="/js/insight.js" defer></script><div class="searchbox ins-search"><div class="searchbox-container ins-search-container"><div class="searchbox-input-wrapper"><input class="searchbox-input ins-search-input" type="text" placeholder="想要查找什么..."><span class="searchbox-close"><a class="fa fa-times-circle" onclick="closeWindow();"></a></span></div><div class="searchbox-result-wrapper ins-section-wrapper"><div class="ins-section-container"><p>Seraching...</p></div></div></div></div></body></html>
+<p>我可不想写那么多的cv代码。</p>
+
+    </div>
+    
+    <link rel="stylesheet" href="https://cdn.staticfile.org/gitalk/1.7.2/gitalk.min.css">
+    <div id="comment">
+        <div id="gitalk-container">
+        </div>
+    </div>
+    
+</div>
+                         
+<footer id="footer">
+    <div class="footer-wrap">
+        <div>
+            © 2022 - 2022 Ming-e
+            <span class="footer-icon">
+                <i class="fa-solid fa-font-awesome fa-fw"></i>
+            </span>
+            @Ming-e
+        </div>
+        <div></div>
+        <div>Based on the <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo Engine</a> & <a
+                target="_blank" rel="noopener" href="https://github.com/argvchs/hexo-theme-particlex">ParticleX Theme</a></div>
+        
+    </div>
+</footer>
+                    </div>
+                </div>
+            </transition>
+            <div id="img_show">
+                <img id="img_content" alt="img_show">
+            </div>
+        </div>
+        <script src="https://cdn.staticfile.org/highlight.js/11.5.1/highlight.min.js"></script>
+        <script src="/js/particlex.js"></script>
+        <script src="/js/showimg.js"></script>
+        
+<script src="https://cdn.staticfile.org/gitalk/1.7.2/gitalk.min.js"></script>
+<script>
+    var clientID = "9af268294e0ae5907374", clientSecret = "04011d6f9bf34d86b7547917330669eb92b9a7d3";
+    
+    const gitalk = new Gitalk({
+        clientID: clientID,
+        clientSecret: clientSecret,
+        repo: "Ming-e.github.io",
+        owner: "Ming-e",
+        admin: ["Ming-e"],
+        language: "zh-CN",
+        id: location.pathname,
+        distractionFreeMode: false,
+        
+    })
+    gitalk.render("gitalk-container")
+</script>
+
+
+    </body>
+</html>

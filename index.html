@@ -1,29 +1,340 @@
-<!DOCTYPE html><html lang="zh-CN" id="theme-light-mode"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="author" content="鳴"><title>鳴</title><meta name="description" content="不以物喜，不以己悲"><meta name="keywords" content="Blog,博客,Hexo"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="renderer" content="webkit"><link rel="shortcut icon" type="image/x-icon" href="/images/1_fade.png"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/blog_basic.css"><link rel="stylesheet" href="/css/font-awesome.min.css"><link rel="stylesheet" href="/css/insight.css"><link rel="stylesheet" href="/css/search.css"><link rel="alternate" type="application/atom+xml" title="ATOM 1.0" href="/atom.xml"><script src="/js/jquery.js"></script><meta name="generator" content="Hexo 5.4.2"></head><body><div class="page-top animated fadeInDown"><div class="nav"><li> <a class="current" href="/">首页</a></li><li> <a href="/archives">归档</a></li><li> <a href="/tags">标签</a></li><li> <a href="/about">关于</a></li></div><div class="information"><div class="nav_right_btn"><li><a class="fa fa-chevron-left" onclick="window.history.go(-1)" style="display:none;"> </a></li><li><a class="fa fa-search" onclick="openWindow();"></a></li></div><div class="avatar"><img src="/images/1.png"></div></div></div><div class="sidebar animated fadeInDown"><div class="sidebar-top"><div class="logo-title"><div class="title"><img src="/images/1.png" style="width:220px;" alt="favicon"><h3 title=""><a href="/">鳴</a></h3><div class="description"><p>不以物喜，不以己悲</p></div></div><ul class="social-links"><li><a target="_blank" rel="noopener" href="https://github.com/Ming-e"><i class="fa fa-github"></i></a></li><li><a href="mailto:424215969@qq.com"><i class="fa fa-envelope"></i></a></li><li><a target="_blank" rel="noopener" href="http://sighttp.qq.com/authd?IDKEY=424215969"><i class="fa fa-qq"></i></a></li><li><a target="_blank" rel="noopener" href="https://www.zhihu.com/people/gqy-22"><i class="fa fa-mortar-board"></i></a></li></ul></div></div><div class="footer"><div class="p"> <span> 全站CC-BY-SA-3.0 </span><i class="fa fa-star"></i><span> 鳴</span></div><div class="by_farbox"><span>Powered by </span><a href="https://hexo.io/zh-cn/" target="_blank">Hexo </a><span> & </span><span>Anatolo </span></div><div class="beian"></div></div></div><div class="main"><div class="autopagerize_page_element"><div class="content"><div class="post animated fadeInDown"><div class="post-title"><h3><a href="/2022/09/12/tree%20struct%20in%20game%20develop_1/">游戏开发中的树形结构——红点系统</a></h3></div><div class="post-content"><div class="card"><p><p>游戏开发中用到树形结构的业务并不是很多，最常见的功能就是红点系统和行为树。我今天先写一下红点系统的开发。</p>
-<p>红点系统的作用就是给玩家提示，例如：玩家有未读邮则主界面邮件功能出现红点，玩家看到红点后点击邮件功能入口，进入邮件功能主界面后又看到邮件标签页显示红点，于是又点击邮件标签进入邮件列表，在众多邮件中找到某一封显示红点的未读邮件。</p>
-<p>整个提示流程是：主界面邮件入口→邮件界面邮件页签→邮件列表中的未读邮件，直观的看，它就是从外到内一层一层的进行提示。</p>
-<p>然而在实现红点功能的时候，认真地想一下，真的是从外到内逐层提示吗？需要在主界面，邮件界面，邮件列表界面分别写提示代码吗？</p>
-<p>在每天都有大量业务等着我去开发的日子，一个小小的红点居然要我逐个手写提示，如果组里真的允许如上文说的那样做，不管别人如何反正我要骂街了。（别说，我现在的公司还真有人这么搞，而且是几年前就开始这么做，可想而知他弄的那些功能要涉及多少代码，真就到处都写一句）</p>
-<p>所以优雅代码的诞生就是从偷懒开始，我希望我只要在邮件列表刷新时加上一句代码:RedPointMgr.ShowPoint(RedPointType.Mail,true)就完成上面整个提示流程。</p>
-<p>于是红点树应运而生，与前面说的从外到内逐层提示不同，这一句代码是写在邮件列表中也就是最内层的，当我调用ShowPoint的时候就会从当前节点逐层向前遍历，即：触发红点功能所有的父节点全部进行一次红点提示即可。</p>
-<p>PS：为什么不是从根节点向子节点遍历？显然，每个节点有众多子节点，无法得知当前节点在哪个节点下，只能先遍历一次找到当前节点，再从当前节点反向遍历。</p>
-<p>那么到这里就很清晰了，首先要有一个红点类，它是一个树形结构</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br></pre></td><td class="code"><pre><span class="line">public enum RedPointType</span><br><span class="line">&#123;</span><br><span class="line">    None,</span><br><span class="line">    Enternal,//一直存在</span><br><span class="line">    Once,//点击一次就消失</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public enum RedPointState</span><br><span class="line">&#123;</span><br><span class="line">    None,</span><br><span class="line">    Show,</span><br><span class="line">    Hide,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class RedPoint</span><br><span class="line">&#123;</span><br><span class="line">    public string key</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Key;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public string subKey</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_SubKey;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public bool isRoot</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_IsRoot;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPointType type</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Type;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPointState state</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_State;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public int data</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Data;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPoint parent</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Parent;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public List&lt;RedPoint&gt; children</span><br><span class="line">    &#123;</span><br><span class="line">        get</span><br><span class="line">        &#123;</span><br><span class="line">            return m_Children;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    public RedPoint(string key, string subKey, bool isRoot, RedPointType type)</span><br><span class="line">    &#123;</span><br><span class="line">        m_Key = key;</span><br><span class="line">        m_SubKey = subKey;</span><br><span class="line">        m_IsRoot = isRoot;</span><br><span class="line">        m_Type = type;</span><br><span class="line">        m_State = RedPointState.Hide;</span><br><span class="line">        m_Data = 0;</span><br><span class="line">        m_Children = new List&lt;RedPoint&gt;();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void Init(Action&lt;RedPointState, int&gt; onShow, Button btn)</span><br><span class="line">    &#123;</span><br><span class="line">        m_OnShow = onShow;</span><br><span class="line"></span><br><span class="line">        if (btn != null)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Btn = btn;</span><br><span class="line">            m_Btn.onClick.AddListener(OnClick);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_OnShow?.Invoke(m_State, m_Data);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void AddChild(RedPoint node, string parentKey)</span><br><span class="line">    &#123;</span><br><span class="line">        if (m_SubKey.Equals(parentKey))</span><br><span class="line">        &#123;</span><br><span class="line">            node.SetParent(this);</span><br><span class="line">            m_Children.Add(node);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Children[i].AddChild(node, parentKey);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPoint GetChild(string subKey)</span><br><span class="line">    &#123;</span><br><span class="line">        if (m_SubKey.Equals(subKey))</span><br><span class="line">        &#123;</span><br><span class="line">            return this;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        if (m_Children.Count &lt; 1)</span><br><span class="line">        &#123;</span><br><span class="line">            return null;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            RedPoint node = m_Children[i].GetChild(subKey);</span><br><span class="line">            if (node != null) return node;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return null;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void SetParent(RedPoint parent)</span><br><span class="line">    &#123;</span><br><span class="line">        m_Parent = parent;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void SetTreeState(string subKey, RedPointState state, int data)</span><br><span class="line">    &#123;</span><br><span class="line">        RedPoint node = GetChild(subKey);</span><br><span class="line">        if (node == null)</span><br><span class="line">        &#123;</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_Data = 0;</span><br><span class="line">        node.SetState(subKey, state, data);</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Data += m_Children[i].data;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_OnShow?.Invoke(m_State, m_Data);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void SetState(string subKey, RedPointState state, int data)</span><br><span class="line">    &#123;</span><br><span class="line">        m_State = state;</span><br><span class="line"></span><br><span class="line">        if (m_SubKey.Equals(subKey))</span><br><span class="line">        &#123;</span><br><span class="line">            m_Data = data;</span><br><span class="line">        &#125;</span><br><span class="line">        else</span><br><span class="line">        &#123;</span><br><span class="line">            for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">            &#123;</span><br><span class="line">                if (m_Children[i].state == RedPointState.Show)</span><br><span class="line">                &#123;</span><br><span class="line">                    m_State = RedPointState.Show;</span><br><span class="line">                    break;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_OnShow?.Invoke(m_State, m_Data);</span><br><span class="line"></span><br><span class="line">        if (m_Parent != null)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Parent.SetState(subKey, state, data);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void OnClick()</span><br><span class="line">    &#123;</span><br><span class="line">        if (m_Type == RedPointType.Once)</span><br><span class="line">        &#123;</span><br><span class="line">            HideChildren();</span><br><span class="line">            SetState(m_SubKey, RedPointState.Hide, m_Data);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void HideChildren()</span><br><span class="line">    &#123;</span><br><span class="line">        m_State = RedPointState.Hide;</span><br><span class="line">        m_OnShow?.Invoke(m_State, m_Data);</span><br><span class="line">        for (int i = 0; i &lt; m_Children.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            m_Children[i].HideChildren();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void Dispose()</span><br><span class="line">    &#123;</span><br><span class="line">        m_Children.Clear();</span><br><span class="line">        m_Children = null;</span><br><span class="line">        m_Parent = null;</span><br><span class="line">        m_Key = null;</span><br><span class="line">        m_SubKey = null;</span><br><span class="line">        m_OnShow = null;</span><br><span class="line">        m_Btn = null;</span><br><span class="line">        m_Type = RedPointType.None;</span><br><span class="line">        m_State = RedPointState.None;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private string m_Key = string.Empty;</span><br><span class="line">    private string m_SubKey = string.Empty;</span><br><span class="line">    private bool m_IsRoot = false;</span><br><span class="line">    private RedPointType m_Type = RedPointType.None;</span><br><span class="line">    private RedPointState m_State = RedPointState.None;</span><br><span class="line">    private GameFrameWorkAction&lt;RedPointState, int&gt; m_OnShow = null;</span><br><span class="line">    private Button m_Btn;</span><br><span class="line">    private int m_Data = 0;</span><br><span class="line">    private RedPoint m_Parent = null;</span><br><span class="line">    private List&lt;RedPoint&gt; m_Children = null;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这里面key就是归属，也就是属于哪一个大功能，subKey是自己的关键字。</p>
-<p>然后需要一个管理器来管理游戏中所有红点的根节点，需要的时候通过关键字找到红点的根节点，再向其中的某个节点插入孩子节点。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br></pre></td><td class="code"><pre><span class="line">public class RedPointMgr : BaseMgr&lt;RedPointMgr&gt;</span><br><span class="line">&#123;</span><br><span class="line">    protected override void OnAwake()</span><br><span class="line">    &#123;</span><br><span class="line">        m_ListRedPointTrees = new List&lt;RedPoint&gt;();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void Regist(string key, string subKey, string parentKey, RedPointType type)</span><br><span class="line">    &#123;</span><br><span class="line">        RedPoint root = GetRedPointTree(key);</span><br><span class="line"></span><br><span class="line">        if (string.IsNullOrEmpty(subKey) &amp;&amp; string.IsNullOrEmpty(parentKey))</span><br><span class="line">        &#123;</span><br><span class="line">            if (root == null)</span><br><span class="line">            &#123;</span><br><span class="line">                root = new RedPoint(key, key, true, type);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            m_ListRedPointTrees.Add(root);</span><br><span class="line">        &#125;</span><br><span class="line">        else</span><br><span class="line">        &#123;</span><br><span class="line">            if (root == null)</span><br><span class="line">            &#123;</span><br><span class="line">                Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);</span><br><span class="line">                return;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            RedPoint node = new RedPoint(key, subKey, false, type);</span><br><span class="line">            root.AddChild(node, parentKey);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void InitPoint(string key, string subKey, GameFrameWorkAction&lt;RedPointState, int&gt; onShow, Button btn = null)</span><br><span class="line">    &#123;</span><br><span class="line">        RedPoint root = GetRedPointTree(key);</span><br><span class="line"></span><br><span class="line">        if (root == null)</span><br><span class="line">        &#123;</span><br><span class="line">            Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        RedPoint node = root.GetChild(subKey);</span><br><span class="line"></span><br><span class="line">        if (node == null)</span><br><span class="line">        &#123;</span><br><span class="line">            Log.GameFrameworkLog.LogError(&quot;The red point node [&quot; + subKey + &quot;] is invalid,please regist first&quot;);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        node.Init(onShow, btn);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void SetPointState(string key, string subKey, RedPointState state, int data = 0)</span><br><span class="line">    &#123;</span><br><span class="line">        RedPoint root = GetRedPointTree(key);</span><br><span class="line"></span><br><span class="line">        if (root == null)</span><br><span class="line">        &#123;</span><br><span class="line">            Log.GameFrameworkLog.LogError(&quot;The red point root [&quot; + key + &quot;] is invalid,please regist first&quot;);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        root.SetTreeState(subKey, state, data);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void Remove(string key)</span><br><span class="line">    &#123;</span><br><span class="line">        for (int i = m_ListRedPointTrees.Count - 1; i &gt;= 0; i--)</span><br><span class="line">        &#123;</span><br><span class="line">            if (m_ListRedPointTrees[i].key.Equals(key))</span><br><span class="line">            &#123;</span><br><span class="line">                m_ListRedPointTrees[i].Dispose();</span><br><span class="line">                m_ListRedPointTrees.RemoveAt(i);</span><br><span class="line">                return;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public RedPoint GetRedPointTree(string key)</span><br><span class="line">    &#123;</span><br><span class="line">        if (string.IsNullOrEmpty(key))</span><br><span class="line">        &#123;</span><br><span class="line">            return null;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; m_ListRedPointTrees.Count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            if (m_ListRedPointTrees[i].key.Equals(key))</span><br><span class="line">            &#123;</span><br><span class="line">                return m_ListRedPointTrees[i];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return null;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    protected override void OnShutDown()</span><br><span class="line">    &#123;</span><br><span class="line">        for (int i = m_ListRedPointTrees.Count - 1; i &gt;= 0; i--)</span><br><span class="line">        &#123;</span><br><span class="line">            m_ListRedPointTrees[i].Dispose();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_ListRedPointTrees.Clear();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private List&lt;RedPoint&gt; m_ListRedPointTrees = null;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>使用时，先在游戏初始化的时候声明有哪些红点构建红点树，然后在UI界面初始化时加入红点显示和点击的回调，最后在功能逻辑处调用SetPointState方法。</p>
-<p>例如现在有一个mail功能，里面有mail2,mail3,mail4三层需要提示红点，只要mail4才是具体业务管理的，其他三个都是页签按钮等。</p>
-<p>先构建，再初始化一顿操作。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">public class Test : MonoBehaviour</span><br><span class="line">&#123;</span><br><span class="line">    public Button button;</span><br><span class="line">    public Text text;</span><br><span class="line">    public Image image;</span><br><span class="line"></span><br><span class="line">    private void Awake()</span><br><span class="line">    &#123;</span><br><span class="line">        RedPointMgr.Init(gameObject);</span><br><span class="line">        string mail = &quot;mail1&quot;;</span><br><span class="line">        string mail2 = &quot;mail2&quot;;</span><br><span class="line">        string mail3 = &quot;mail3&quot;;</span><br><span class="line">        string mail4 = &quot;mail4&quot;;</span><br><span class="line"></span><br><span class="line">        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化</span><br><span class="line">        RedPointMgr.instance.Regist(mail, null, null, RedPointType.Enternal);</span><br><span class="line">        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化</span><br><span class="line">        RedPointMgr.instance.Regist(mail, mail2, mail, RedPointType.Enternal);</span><br><span class="line">        //声明mail根节点，它的主key是mail，无父节点，红点类型是随着子节点变化</span><br><span class="line">        RedPointMgr.instance.Regist(mail, mail3, mail2, RedPointType.Enternal);</span><br><span class="line">        //声明mail根节点，它的主key是mail，无父节点，红点类型是点击即消失</span><br><span class="line">        RedPointMgr.instance.Regist(mail, mail4, mail3, RedPointType.Once);</span><br><span class="line"></span><br><span class="line">        RedPointMgr.instance.InitPoint(mail, mail, null);</span><br><span class="line">        RedPointMgr.instance.InitPoint(mail, mail2, null);</span><br><span class="line">        RedPointMgr.instance.InitPoint(mail, mail3, null);</span><br><span class="line">        RedPointMgr.instance.InitPoint(mail, mail4, this.onShow, button);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void onShow(RedPointState state, int data)</span><br><span class="line">    &#123;</span><br><span class="line">        image.gameObject.SetActive(state == RedPointState.Show);</span><br><span class="line">        text.text = data.ToString();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>然后在业务处调用一句</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RedPointMgr.instance.SetPointState(mail, mail4, RedPointState.Show, 5);</span><br></pre></td></tr></table></figure>
-<p>这里这个5是显示再红点上的数量，也是业务需要统计的数据，当然如果只显示红点不显示数量就不用传了。</p>
-<p>以上是红点系统的简单实现，写这篇东西也是因为见到公司的大神同事竟然手写每一个红点，这实在是令我惊叹不已。</p>
-<p>当然，最重要的还是我可不想写那么多的cv代码。</p>
-</p></div></div><div class="post-footer"><div class="meta"><div class="info"><i class="fa fa-sun-o"></i><span class="date">2022-09-12</span><a class="tag" href="/categories/技术/" title="技术">技术 </a><i class="fa fa-tag"></i><a class="tag" href="/tags/技术/" title="技术">技术 </a><span class="leancloud_visitors"></span><span>大约2021个字, 6分钟44秒读完</span></div></div></div></div><div class="post animated fadeInDown"><div class="post-title"><h3><a href="/2022/09/09/hello-world/">Hello World</a></h3></div><div class="post-content"><div class="card"><p><p>终于使用hexo搭建了自己的博客，按照第一个程序都是hello world的惯例，hexo也默认第一篇文章名字叫hello world，正好我也不用改了。</p>
-<p>从事Unity3d开发的第5个年头，也是我大学毕业的第五年。</p>
-<p>迷茫过，低沉过，不过现在目标又逐渐清晰——项目能不能成功赚不赚钱不重要，重要的是享受coding的每一天，享受解决每一个问题、写出优雅代码的成就感。</p>
-<p>以后会慢慢把CSDN的文章都搬过来，也有许多新的东西要写。</p>
-<p>技术，日常，音乐，游戏，都写一写吧。</p>
-</p></div></div><div class="post-footer"><div class="meta"><div class="info"><i class="fa fa-sun-o"></i><span class="date">2022-09-09</span><a class="tag" href="/categories/日常/" title="日常">日常 </a><i class="fa fa-tag"></i><a class="tag" href="/tags/日常/" title="日常">日常 </a><span class="leancloud_visitors"></span><span>大约190个字, 38秒读完</span></div></div></div></div><div class="pagination"><ul class="clearfix"></ul></div></div></div></div><script src="/js/darkLightToggle.js"></script><script src="/js/jquery-migrate-1.2.1.min.js"></script><script src="/js/jquery.appear.js"></script><script src="/js/add-bookmark.js"></script><script>(function(window){var INSIGHT_CONFIG={TRANSLATION:{POSTS:"文章",PAGES:"页面",CATEGORIES:"分类",TAGS:"标签",UNTITLED:"(无标题)",},CONTENT_URL:"/content.json",};window.INSIGHT_CONFIG=INSIGHT_CONFIG})(window);</script><script src="/js/insight.js" defer></script><div class="searchbox ins-search"><div class="searchbox-container ins-search-container"><div class="searchbox-input-wrapper"><input class="searchbox-input ins-search-input" type="text" placeholder="想要查找什么..."><span class="searchbox-close"><a class="fa fa-times-circle" onclick="closeWindow();"></a></span></div><div class="searchbox-result-wrapper ins-section-wrapper"><div class="ins-section-container"><p>Seraching...</p></div></div></div></div></body></html>
+<!DOCTYPE html>
+<html lang="zh-cn">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
+        <title>Ming-E</title>
+        <meta name="author" content="Ming-e">
+        <meta name="description" content="">
+        <meta name="keywords" content="Ming-e">
+        <link rel="icon" href="/images/1.png">
+        <script src="https://cdn.staticfile.org/instant.page/5.1.0/instantpage.min.js" type="module"></script>
+        <script src="https://cdn.staticfile.org/font-awesome/6.1.1/js/all.min.js"></script>
+        
+        <link rel="stylesheet" href="/css/fonts.min.css">
+        <link rel="stylesheet" href="/css/particlex.css">
+        
+        <script src="https://cdn.staticfile.org/vue/3.2.33/vue.global.prod.min.js"></script>
+    <meta name="generator" content="Hexo 5.4.2"></head>
+    <body>
+        <div id="loading" style="height:100vh;width:100vw;position:fixed;display:flex;z-index:200;justify-content:space-between;background:#fff;transition:opacity 0.3s ease-out"><div style="position:fixed;height:100vh;width:100vw;display:flex;justify-content:center;align-items:center"><div id="loadcontent" style="width:50vmin;height:50vmin;padding:50px;border-radius:50%;display:flex;justify-content:center;align-items:center;border:solid 10px #a3ddfb;text-align:center"><div><h2>LOADING...</h2><p style="word-break:keep-all">加载过慢请开启缓存(浏览器默认开启)</p><div><img alt="loading" src="/loading.gif"></div></div></div></div></div>
+        <div id="layout">
+            <i data-fa-symbol="calendar-solid" class="fa-solid fa-calendar fa-fw"></i>
+            <i data-fa-symbol="bookmark-solid" class="fa-solid fa-bookmark fa-fw"></i>
+            <i data-fa-symbol="tags-solid" class="fa-solid fa-tags fa-fw"></i>
+            <transition name="into">
+                <div v-show="show_page" style="display: -not-none">
+                    <div id="menu_show">
+                         
+<nav id="menu">
+    <div class="desktop-menu">
+        <a href="/">
+            <span class="title">Ming-e</span>
+        </a>
+        
+        <a href="/">
+            <i class="fa-solid fa-house fa-fw"></i>
+            <span>&ensp;home</span>
+        </a>
+        
+        <a href="/about">
+            <i class="fa-solid fa-id-card fa-fw"></i>
+            <span>&ensp;about</span>
+        </a>
+        
+        <a href="/archives">
+            <i class="fa-solid fa-box-archive fa-fw"></i>
+            <span>&ensp;archives</span>
+        </a>
+        
+        <a href="/categories">
+            <i class="fa-solid fa-bookmark fa-fw"></i>
+            <span>&ensp;categories</span>
+        </a>
+        
+        <a href="/tags">
+            <i class="fa-solid fa-tags fa-fw"></i>
+            <span>&ensp;tags</span>
+        </a>
+        
+    </div>
+    <div :class="'phone-menu ' + menu_show" id="phone-menu">
+        <div class="curtain" @click="menu_show = !menu_show" v-show="menu_show"></div>
+        <div :class="'title'" @click="menu_show = !menu_show">
+            <i class="fa-solid fa-bars fa-fw"></i>
+            <span>&emsp;Ming-e</span>
+        </div>
+        <transition name="slide">
+        <div class="items" v-show="menu_show">
+            
+            <a href="/">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-house fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">home</div>
+                </div>
+            </a>
+            
+            <a href="/about">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-id-card fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">about</div>
+                </div>
+            </a>
+            
+            <a href="/archives">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-box-archive fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">archives</div>
+                </div>
+            </a>
+            
+            <a href="/categories">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-bookmark fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">categories</div>
+                </div>
+            </a>
+            
+            <a href="/tags">
+                <div class="item">
+                    <div style="min-width: 20px; max-width: 50px; width: 10%">
+                        <i class="fa-solid fa-tags fa-fw"></i>
+                    </div>
+                    <div style="min-width: 100px; max-width: 150%; width: 20%">tags</div>
+                </div>
+            </a>
+            
+        </div>
+        </transition>
+    </div>
+</nav>
+                    </div>
+                    <div id="main">
+                        <div id="home-head">
+    <div id="home-background" style="background-image: url(/images/background.jpg)"></div>
+    
+    <div id="home-info" class="home-info" @click="home_click">
+        <span class="loop"></span>
+        <span class="loop"></span>
+        <span class="loop"></span>
+        <span class="loop"></span>
+        <span class="info">
+            <div class="wrap">
+                <h1>Ming-e</h1>
+                <h3>HI , I&#39;m Ming-e.</h3>
+                <h5></h5>
+            </div>
+        </span>
+    </div>
+    
+</div>
+
+<div id="home-posts-wrap" class="">
+    <div id="home-posts">
+        <div id="posts">
+            
+
+<div class="post">
+    <a href="/2022/09/12/tree struct in game develop_1/">
+        <h2 class="post-title">游戏开发中的树形结构——红点系统</h2>
+    </a>
+    <div class="category-and-date">
+        
+        <span class="category">
+            <a href="/categories/技术/">
+                <span class="icon">
+                    <svg class="fa-icon"><use xlink:href="#bookmark-solid"></use></svg>
+                </span>
+                技术
+            </a>
+        </span>
+        
+        <span class="date">
+            <span class="icon">
+                <svg class="fa-icon"><use xlink:href="#calendar-solid"></use></svg>
+            </span>
+            2022/9/12
+        </span>
+    </div>
+    <div class="excerpt">
+        <div class="content" v-pre>
+            
+            <p>游戏开发中最常见的用到树形结构的功能就是红点系统和行为树。</p>
+<p>我今天先写一下红点系统的开发。</p>
+            
+        </div>
+    </div>
+    <div class="post-tags">
+        
+        <span class="icon">
+            <svg class="fa-icon"><use xlink:href="#tags-solid"></use></svg>
+        </span>
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/技术/" style="color: #00a596">
+                技术
+            </a>
+        </span>
+        
+    </div>
+    <a href="/2022/09/12/tree struct in game develop_1/" class="go-post">阅读全文</a>
+</div>
+
+<div class="post">
+    <a href="/2022/09/09/hello-world/">
+        <h2 class="post-title">Hello World</h2>
+    </a>
+    <div class="category-and-date">
+        
+        <span class="category">
+            <a href="/categories/日常/">
+                <span class="icon">
+                    <svg class="fa-icon"><use xlink:href="#bookmark-solid"></use></svg>
+                </span>
+                日常
+            </a>
+        </span>
+        
+        <span class="date">
+            <span class="icon">
+                <svg class="fa-icon"><use xlink:href="#calendar-solid"></use></svg>
+            </span>
+            2022/9/9
+        </span>
+    </div>
+    <div class="excerpt">
+        <div class="content" v-pre>
+            
+            <p>终于使用hexo搭建了自己的博客，按照第一个程序都是hello world的惯例，hexo也默认第一篇文章名字叫hello world，正好我也不用改了。</p>
+            
+        </div>
+    </div>
+    <div class="post-tags">
+        
+        <span class="icon">
+            <svg class="fa-icon"><use xlink:href="#tags-solid"></use></svg>
+        </span>
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/日常/" style="color: #03a9f4">
+                日常
+            </a>
+        </span>
+        
+    </div>
+    <a href="/2022/09/09/hello-world/" class="go-post">阅读全文</a>
+</div>
+
+             
+<div class="page-current">
+    <div class="prev">
+        
+    </div>
+    <div class="page-index">
+        
+        <span class="current">
+            1
+        </span>
+        
+    </div>
+    <div class="next">
+        
+    </div>
+</div>
+        </div>
+    </div>
+    
+    <div id="home-card">
+        <div id="card-div">
+    <div class="card-style" style="width: 300px">
+        <div class="avatar">
+            <img src="/images/1.png " alt="avatar">
+        </div>
+        <div class="name">
+            Ming-e
+        </div>
+        <div class="descriptions">
+            
+            <div class="description">
+                不以物喜，不以己悲
+            </div>
+            
+        </div>
+        <div class="icon-links">
+            
+            <span class="icon-link">
+                <a target="_blank" rel="noopener" href="https://github.com/Ming-e">
+                    <i class="fa-brands fa-github fa-fw"></i>
+                </a>
+            </span>
+            
+            <span class="icon-link">
+                <a target="_blank" rel="noopener" href="http://wpa.qq.com/msgrd?v=3&uin=424215969&site=qq&menu=true">
+                    <i class="fa-brands fa-qq fa-fw"></i>
+                </a>
+            </span>
+            
+            <span class="icon-link">
+                <a target="_blank" rel="noopener" href="https://www.zhihu.com/people/Ming-e">
+                    <i class="fa-graduation-cap fa-solid fa-fw"></i>
+                </a>
+            </span>
+            
+            <span class="icon-link">
+                <a href="mailto:424215969@qq.com">
+                    <i class="fa-envelope fa-solid fa-fw"></i>
+                </a>
+            </span>
+            
+        </div>
+        <div class="friend-links">
+            
+        </div>
+    </div>
+</div>
+    </div>
+    
+</div>
+                         
+<footer id="footer">
+    <div class="footer-wrap">
+        <div>
+            © 2022 - 2022 Ming-e
+            <span class="footer-icon">
+                <i class="fa-solid fa-font-awesome fa-fw"></i>
+            </span>
+            @Ming-e
+        </div>
+        <div></div>
+        <div>Based on the <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo Engine</a> & <a
+                target="_blank" rel="noopener" href="https://github.com/argvchs/hexo-theme-particlex">ParticleX Theme</a></div>
+        
+    </div>
+</footer>
+                    </div>
+                </div>
+            </transition>
+            <div id="img_show">
+                <img id="img_content" alt="img_show">
+            </div>
+        </div>
+        <script src="https://cdn.staticfile.org/highlight.js/11.5.1/highlight.min.js"></script>
+        <script src="/js/particlex.js"></script>
+        <script src="/js/showimg.js"></script>
+        
+
+    </body>
+</html>
