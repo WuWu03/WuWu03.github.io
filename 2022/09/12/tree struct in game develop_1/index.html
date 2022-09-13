@@ -4,11 +4,11 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
-        <title>游戏开发中的树形结构——红点系统 | Ming-E</title>
+        <title>游戏开发中的树形结构——红点系统 | Ming-e</title>
         <meta name="author" content="Ming-e">
         <meta name="description" content="">
         <meta name="keywords" content="Ming-e">
-        <link rel="icon" href="/images/1.png">
+        <link rel="icon" href="/images/1_circle.png">
         <script src="https://cdn.staticfile.org/instant.page/5.1.0/instantpage.min.js" type="module"></script>
         <script src="https://cdn.staticfile.org/font-awesome/6.1.1/js/all.min.js"></script>
         
@@ -149,7 +149,7 @@
             
             <span class="tag">
                 
-                <a href="/tags/技术/" style="color: #00bcd4">
+                <a href="/tags/技术/" style="color: #00a596">
                     技术
                 </a>
             </span>
@@ -162,13 +162,12 @@
 <p>我今天先写一下红点系统的开发。</p>
 <span id="more"></span>
 
-<p>红点系统的作用就是给玩家提示，例如：玩家有未读邮则主界面邮件功能出现红点，玩家看到红点后点击邮件功能入口，进入邮件功能主界面后又看到邮件标签页显示红点，于是又点击邮件标签进入邮件列表，在众多邮件中找到某一封显示红点的未读邮件。</p>
-<p>整个提示流程是：主界面邮件入口→邮件界面邮件页签→邮件列表中的未读邮件。</p>
-<p>直观的看，它就是从外到内逐层进行提示。</p>
+<p>红点的作用就是给玩家提示，例如：玩家有未读邮则主界面邮件功能出现红点，玩家看到红点后点击邮件功能入口，进入邮件功能主界面后又看到邮件标签页显示红点于是又点击邮件标签进入邮件列表，在众多邮件中找到某一封显示红点的未读邮件。</p>
+<p>整个提示流程是：主界面邮件入口→邮件界面邮件页签→邮件列表中的未读邮件。直观的看，就是从外到内逐层进行提示。</p>
 <p>然而在实现红点功能的时候，认真地想一下，真的是从外到内逐层提示吗？</p>
 <p>需要在主界面，邮件界面，邮件列表界面分别写红点提示代码吗？</p>
 <p>每天都有做不完的业务，一个小小的红点居然要我逐个手写提示，我要骂街了。</p>
-<p>别说，我还真见过有人这么搞，一个功能的红点提示要到处写，可想而知他弄的那些功能要涉及多少代码，。</p>
+<p>别说，我还真见过有人这么搞，一个功能的红点提示要到处写，可想而知他弄的那些功能要涉及多少代码。</p>
 <p>所以优雅代码的诞生就是从偷懒开始，我希望只要在邮件列表刷新时加上一句代码:RedPointMgr.ShowPoint(RedPointType.Mail,true)就完成上面整个提示流程。</p>
 <p>于是红点树应运而生，与前面说的从外到内逐层提示不同，这一句代码是在邮件列表刷新时触发的，只在自己的业务里写一句即可。</p>
 <p>当调用ShowPoint的时候就会从当前节点逐层向前遍历，即：触发红点功能的节点的所有父节点全部进行一次红点提示即可。</p>
@@ -176,7 +175,7 @@
 <p>PS：为什么不是从根节点向子节点遍历？显然，每个节点只有一个父节点，有众多子节点，无法得知当前节点在哪个节点下，只能先遍历一次找到当前节点，再从当前节点反向遍历。</p>
 </blockquote>
 <p>那么到这里就很清晰了，首先要有一个红点类，它是一个树形结构</p>
-<pre><code>public enum RedPointType
+<pre><code class="C#">public enum RedPointType
 &#123;
     None,
     Enternal,//一直存在
@@ -416,7 +415,7 @@ public class RedPoint
 <p>这里面key就是归属，也就是属于哪一个大功能，subKey是自己的关键字。</p>
 <hr>
 <p>然后需要一个管理器来管理游戏中所有红点的根节点，需要的时候通过关键字找到红点的根节点，再向其中的某个节点插入子节点。</p>
-<pre><code>public class RedPointMgr : BaseMgr&lt;RedPointMgr&gt;
+<pre><code class="C#">public class RedPointMgr : BaseMgr&lt;RedPointMgr&gt;
 &#123;
     protected override void OnAwake()
     &#123;
@@ -531,7 +530,7 @@ public class RedPoint
 <hr>
 <p>例如：现在有一个mail功能，里面有mail2、mail3、mail4，一共四层需要红点提示，只有mail4才是具体业务管理的，其他三个都随着mail4变化。</p>
 <p>先构建，再初始化，最后写显示回调。（一顿操作猛如虎，一看工资2k5）</p>
-<pre><code>public class Test : MonoBehaviour
+<pre><code class="C#">public class Test : MonoBehaviour
 &#123;
     public Button button;
     public Text text;
@@ -571,7 +570,7 @@ public class RedPoint
 &#125;
 </code></pre>
 <p>最后在业务处调用一句</p>
-<pre><code>RedPointMgr.instance.SetPointState(mail, mail4, RedPointState.Show, 5);
+<pre><code class="C#">RedPointMgr.instance.SetPointState(mail, mail4, RedPointState.Show, 5);
 </code></pre>
 <blockquote>
 <p>这里的5是显示在红点上的数字，是业务需要统计的数据，如果只显示红点不显示数字就不用传了。</p>
